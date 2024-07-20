@@ -1,56 +1,79 @@
+import os
 import streamlit as st
-from openai import OpenAI
+from dotenv import load_dotenv
 
-# Show title and description.
-st.title("💬 Chatbot")
-st.write(
-    "This is a simple chatbot that uses OpenAI's GPT-3.5 model to generate responses. "
-    "To use this app, you need to provide an OpenAI API key, which you can get [here](https://platform.openai.com/account/api-keys). "
-    "You can also learn how to build this app step by step by [following our tutorial](https://docs.streamlit.io/develop/tutorials/llms/build-conversational-apps)."
+load_dotenv()  # Load environment variables from .env file
+
+from langchain.chains import LLMChain
+from langchain_core.prompts import (
+    ChatPromptTemplate,
+    HumanMessagePromptTemplate,
+    MessagesPlaceholder,
 )
+from langchain_core.messages import SystemMessage
+from langchain.chains.conversation.memory import ConversationBufferWindowMemory
+from langchain_groq import ChatGroq
 
-# Ask user for their OpenAI API key via `st.text_input`.
-# Alternatively, you can store the API key in `./.streamlit/secrets.toml` and access it
-# via `st.secrets`, see https://docs.streamlit.io/develop/concepts/connections/secrets-management
-openai_api_key = st.text_input("OpenAI API Key", type="password")
-if not openai_api_key:
-    st.info("Please add your OpenAI API key to continue.", icon="🗝️")
-else:
+def main():
+    """
+    This function is the main entry point of the application. It sets up the Groq client, the Streamlit interface, and handles the chat interaction.
+    """
 
-    # Create an OpenAI client.
-    client = OpenAI(api_key=openai_api_key)
+    # Get Groq API key from .env file
+    groq_api_key = os.environ['GROQ_API_KEY']
+    model = 'llama3-8b-8192'
 
-    # Create a session state variable to store the chat messages. This ensures that the
-    # messages persist across reruns.
-    if "messages" not in st.session_state:
-        st.session_state.messages = []
+    # Initialize Groq Langchain chat object and conversation
+    groq_chat = ChatGroq(
+            groq_api_key=groq_api_key, 
+            model_name=model
+    )
 
-    # Display the existing chat messages via `st.chat_message`.
-    for message in st.session_state.messages:
-        with st.chat_message(message["role"]):
-            st.markdown(message["content"])
+    st.title("IA_Med")
+    st.write("Seja bem vindo ao IA_Med. "
+             + " Sou um sistema de inteligência artificial treinado para auxiliar na análise de sintomas e direcionar você para o caminho certo."
 
-    # Create a chat input field to allow the user to enter a message. This will display
-    # automatically at the bottom of the page.
-    if prompt := st.chat_input("What is up?"):
++ " Com base em suas respostas, tentarei traçar um breve panorama do que pode estar acontecendo.")
 
-        # Store and display the current prompt.
-        st.session_state.messages.append({"role": "user", "content": prompt})
-        with st.chat_message("user"):
-            st.markdown(prompt)
 
-        # Generate a response using the OpenAI API.
-        stream = client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[
-                {"role": m["role"], "content": m["content"]}
-                for m in st.session_state.messages
-            ],
-            stream=True,
+    system_prompt = 'Você é um especialista em diagnósticos médicos, baseado nos sintomas apresentados pelo usuário, personalize um possível diagnóstico:'
+
+
+    conversational_memory_length = 5  # number of previous messages the chatbot will remember during the conversation
+
+    memory = ConversationBufferWindowMemory(k=conversational_memory_length, memory_key="chat_history", return_messages=True)
+
+    user_input = st.text_input("Apresente seus sintomas detalhadamente, a intensidade e quando iniciaram.")
+
+    if user_input:
+        # Construct a chat prompt template using various components
+        prompt = ChatPromptTemplate.from_messages(
+            [
+                SystemMessage(
+                    content=system_prompt
+                ),  # This is the persistent system prompt that is always included at the start of the chat.
+
+                MessagesPlaceholder(
+                    variable_name="chat_history"
+                ),  # This placeholder will be replaced by the actual chat history during the conversation. It helps in maintaining context.
+
+                HumanMessagePromptTemplate.from_template(
+                    "{human_input}"
+                ),  # This template is where the user's current input will be injected into the prompt.
+            ]
         )
 
-        # Stream the response to the chat using `st.write_stream`, then store it in 
-        # session state.
-        with st.chat_message("assistant"):
-            response = st.write_stream(stream)
-        st.session_state.messages.append({"role": "assistant", "content": response})
+        # Create a conversation chain using the LangChain LLM (Language Learning Model)
+        conversation = LLMChain(
+            llm=groq_chat,  # The Groq LangChain chat object initialized earlier.
+            prompt=prompt,  # The constructed prompt template.
+            verbose=False,   # TRUE Enables verbose output, which can be useful for debugging.
+            memory=memory,  # The conversational memory object that stores and manages the conversation history.
+        )
+
+        # The chatbot's answer is generated by sending the full prompt to the Groq API.
+        response = conversation.predict(human_input=user_input)
+        st.write("IA_Med:", response)
+
+if __name__ == "__main__":
+    main()

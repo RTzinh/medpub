@@ -19,11 +19,11 @@ def main():
     This function is the main entry point of the application. It sets up the Groq client, the Streamlit interface, and handles the chat interaction.
     """
 
-    # Get Groq API key from .env file
+    
     groq_api_key = os.environ['GROQ_API_KEY']
     model = 'llama3-8b-8192'
 
-    # Initialize Groq Langchain chat object and conversation
+    
     groq_chat = ChatGroq(
             groq_api_key=groq_api_key, 
             model_name=model
@@ -36,30 +36,27 @@ def main():
 + " Com base em suas respostas, tentarei traçar um breve panorama do que pode estar acontecendo.")
 
 
-    system_prompt = 'Você é um especialista em diagnósticos médicos, baseado nos sintomas apresentados pelo usuário, personalize um possível diagnóstico:'
+    system_prompt = 'Você é um especialista em diagnósticos médicos, baseado nos sintomas apresentados pelo usuário, personalize um possível diagnóstico. Lembre-se de tudo o que o paciente falar:'
 
 
-    conversational_memory_length = 5  # number of previous messages the chatbot will remember during the conversation
-
+    conversational_memory_length = 5  
     memory = ConversationBufferWindowMemory(k=conversational_memory_length, memory_key="chat_history", return_messages=True)
 
-    user_input = st.text_input("Apresente seus sintomas detalhadamente, a intensidade e quando iniciaram.")
+    user_input = st.text_input("Apresente TODOS seus sintomas detalhadamente, a intensidade e quando iniciaram. (Ex. Dor de cabeça forte, febre, de 40 graus, irritação na garganta, vomito, etc.)")
 
     if user_input:
-        # Construct a chat prompt template using various components
+        
         prompt = ChatPromptTemplate.from_messages(
             [
                 SystemMessage(
                     content=system_prompt
-                ),  # This is the persistent system prompt that is always included at the start of the chat.
-
+                ),  
                 MessagesPlaceholder(
                     variable_name="chat_history"
-                ),  # This placeholder will be replaced by the actual chat history during the conversation. It helps in maintaining context.
-
+                ), 
                 HumanMessagePromptTemplate.from_template(
                     "{human_input}"
-                ),  # This template is where the user's current input will be injected into the prompt.
+                ),  
             ]
         )
 

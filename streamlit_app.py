@@ -42,7 +42,7 @@ def main():
     system_prompt = (
         "Você é um especialista em diagnósticos médicos. Baseado nos sintomas apresentados pelo usuário, "
         "personalize um possível diagnóstico. Sugira ao paciente que ele responda todas as perguntas sem exceção. Não dê a resposta enquanto ele não responder todas as perguntas. Após ele responder as 10 perguntas, você pode dar o diagnóstico. "
-        "Coloque todas as doenças relacionadas possíveis. Peça apenas informações relevantes, não faça perguntas muito específicas. Faça sempre 10 perguntas muito úteis (ao nao ser que ele dê todos os sintomas detalhadamente, aí não precisa fazer perguntas), nem menos nem mais que isso. Faça 1 pergunta de cada vez."
+        "Coloque todas as doenças relacionadas possíveis. Peça apenas informações relevantes, não faça perguntas muito específicas. Faça sempre 10 perguntas muito úteis, nem menos nem mais que isso. Faça 1 pergunta de cada vez. Quando estiver acabando as perguntas, avise o paciente."
     )
 
     # Inicializar memória de conversa
@@ -64,68 +64,70 @@ def main():
         user_input = st.text_area(
             "Se possível, apresente TODOS seus sintomas DETALHADAMENTE, a intensidade e quando iniciaram, para um diagnóstico mais preciso e rápido.",
             height=200,
-            key='user_input',
-            value=""  # Iniciar com campo vazio
+            key='user_input'
         )
 
         # Botão de enviar para simular a tecla Enter
         submit_button = st.button("Enviar", key='submit_button')
 
-        if submit_button and user_input:
-            # Adicionar entrada do usuário ao histórico
-            st.session_state.history.append(f"<strong>Você:</strong> {user_input}")
+        if submit_button or st.session_state.get('submit_on_enter', False):
+            if user_input:
+                # Adicionar entrada do usuário ao histórico
+                st.session_state.history.append(f"<div class='message user-message'><strong>Você:</strong> {user_input}</div>")
 
-            # Criar modelo de prompt
-            prompt = ChatPromptTemplate.from_messages(
-                [
-                    SystemMessage(content=system_prompt),
-                    MessagesPlaceholder(variable_name="chat_history"),
-                    HumanMessagePromptTemplate.from_template("{human_input}"),
-                ]
-            )
+                # Criar modelo de prompt
+                prompt = ChatPromptTemplate.from_messages(
+                    [
+                        SystemMessage(content=system_prompt),
+                        MessagesPlaceholder(variable_name="chat_history"),
+                        HumanMessagePromptTemplate.from_template("{human_input}"),
+                    ]
+                )
 
-            # Criar cadeia de conversa
-            conversation = LLMChain(
-                llm=groq_chat,
-                prompt=prompt,
-                verbose=False,
-                memory=st.session_state.memory,
-            )
+                # Criar cadeia de conversa
+                conversation = LLMChain(
+                    llm=groq_chat,
+                    prompt=prompt,
+                    verbose=False,
+                    memory=st.session_state.memory,
+                )
 
-            # Obter resposta do modelo
-            response = conversation.predict(human_input=user_input)
+                # Obter resposta do modelo
+                response = conversation.predict(human_input=user_input)
 
-            # Adicionar resposta ao histórico
-            st.session_state.history.append(f"<strong>MedIA:</strong> {response}")
+                # Adicionar resposta ao histórico
+                st.session_state.history.append(f"<div class='message ai-message'><strong>MedIA:</strong> {response}</div>")
 
-            # Limpar entrada do usuário após o envio
-            st.session_state['user_input'] = ""  # Define o campo de texto para uma string vazia
-
-            # Rerun para limpar o campo de entrada
-            st.experimental_rerun()
+                # Limpar entrada do usuário após o envio
+                st.session_state['submit_on_enter'] = False
+                st.experimental_rerun()
+            else:
+                st.warning("Por favor, insira seus sintomas antes de enviar.")
 
     with col2:
-        # Exibir histórico de chat com rolagem automática para a última mensagem
+        # Exibir histórico de chat com rolagem e separadores
         st.subheader("Respostas do MedIA")
         if st.session_state.history:
             st.markdown(
                 f"""
-                <div style="height: 400px; overflow-y: auto;" id="chat-history">
+                <div id="chat-history" style="height: 400px; overflow-y: auto; display: flex; flex-direction: column;">
                     {"<hr>".join(st.session_state.history)}
                 </div>
                 """, 
                 unsafe_allow_html=True
             )
 
-        # Trecho de JavaScript para rolar automaticamente até a última mensagem
+        # Trecho de JavaScript para simular o pressionamento do botão 'enviar' quando Enter é pressionado
         st.markdown("""
             <script>
             document.addEventListener('DOMContentLoaded', function() {
-                // Scroll automático para a última mensagem
-                const chatContainer = document.getElementById('chat-history');
-                if (chatContainer) {
-                    chatContainer.scrollTop = chatContainer.scrollHeight;
-                }
+                const textarea = document.querySelector('textarea');
+                textarea.addEventListener('keydown', function(event) {
+                    if (event.key === 'Enter' && !event.shiftKey) {
+                        event.preventDefault();
+                        document.querySelector('button').click();
+                    }
+                });
             });
             </script>
             """, unsafe_allow_html=True)

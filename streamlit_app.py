@@ -41,18 +41,15 @@ def main():
     # Inicializar prompt do sistema
     system_prompt = (
         "Você é um especialista em diagnósticos médicos. Baseado nos sintomas apresentados pelo usuário, "
-        "personalize um possível diagnóstico. Sugira ao paciente que ele responda todas as perguntas sem exceção. "
-        "Não dê a resposta enquanto ele não responder todas as perguntas. Após ele responder as 10 perguntas, "
-        "você pode dar o diagnóstico. Coloque todas as doenças relacionadas possíveis. "
-        "Peça apenas informações relevantes, não faça perguntas muito específicas. "
-        "Faça sempre 10 perguntas muito úteis (ao nao ser que ele dê todos os sintomas detalhadamente, "
-        "aí não precisa fazer perguntas), nem menos nem mais que isso. Faça 1 pergunta de cada vez."
+        "personalize um possível diagnóstico. Sugira ao paciente que ele responda todas as perguntas sem exceção. Não dê a resposta enquanto ele não responder todas as perguntas. Após ele responder as 10 perguntas, você pode dar o diagnóstico. "
+        "Coloque todas as doenças relacionadas possíveis. Peça apenas informações relevantes, não faça perguntas muito específicas. Faça sempre 10 perguntas muito úteis (ao nao ser que ele dê todos os sintomas detalhadamente, aí não precisa fazer perguntas), nem menos nem mais que isso. Faça 1 pergunta de cada vez."
     )
 
     # Inicializar memória de conversa
+    conversational_memory_length = 50000
     if 'memory' not in st.session_state:
         st.session_state.memory = ConversationBufferWindowMemory(
-            k=50000, memory_key="chat_history", return_messages=True
+            k=conversational_memory_length, memory_key="chat_history", return_messages=True
         )
 
     if 'history' not in st.session_state:
@@ -67,10 +64,11 @@ def main():
         user_input = st.text_area(
             "Se possível, apresente TODOS seus sintomas DETALHADAMENTE, a intensidade e quando iniciaram, para um diagnóstico mais preciso e rápido.",
             height=200,
-            key='user_input'
+            key='user_input',
+            value=""  # Iniciar com campo vazio
         )
 
-        # Botão de enviar
+        # Botão de enviar para simular a tecla Enter
         submit_button = st.button("Enviar", key='submit_button')
 
         if submit_button and user_input:
@@ -101,16 +99,36 @@ def main():
             st.session_state.history.append(f"<strong>MedIA:</strong> {response}")
 
             # Limpar entrada do usuário após o envio
+            st.session_state['user_input'] = ""  # Define o campo de texto para uma string vazia
+
+            # Rerun para limpar o campo de entrada
             st.experimental_rerun()
 
     with col2:
-        # Exibir histórico de chat
+        # Exibir histórico de chat com rolagem automática para a última mensagem
         st.subheader("Respostas do MedIA")
         if st.session_state.history:
             st.markdown(
-                "<hr>".join(st.session_state.history),
+                f"""
+                <div style="height: 400px; overflow-y: auto;" id="chat-history">
+                    {"<hr>".join(st.session_state.history)}
+                </div>
+                """, 
                 unsafe_allow_html=True
             )
+
+        # Trecho de JavaScript para rolar automaticamente até a última mensagem
+        st.markdown("""
+            <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                // Scroll automático para a última mensagem
+                const chatContainer = document.getElementById('chat-history');
+                if (chatContainer) {
+                    chatContainer.scrollTop = chatContainer.scrollHeight;
+                }
+            });
+            </script>
+            """, unsafe_allow_html=True)
 
 if __name__ == "__main__":
     main()

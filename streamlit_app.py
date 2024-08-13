@@ -41,15 +41,18 @@ def main():
     # Inicializar prompt do sistema
     system_prompt = (
         "Você é um especialista em diagnósticos médicos. Baseado nos sintomas apresentados pelo usuário, "
-        "personalize um possível diagnóstico. Sugira ao paciente que ele responda todas as perguntas sem exceção. Não dê a resposta enquanto ele não responder todas as perguntas. Após ele responder as 10 perguntas, você pode dar o diagnóstico. "
-        "Coloque todas as doenças relacionadas possíveis. Peça apenas informações relevantes, não faça perguntas muito específicas. Faça sempre 10 perguntas muito úteis (ao nao ser que ele dê todos os sintomas detalhadamente, aí não precisa fazer perguntas), nem menos nem mais que isso. Faça 1 pergunta de cada vez."
+        "personalize um possível diagnóstico. Sugira ao paciente que ele responda todas as perguntas sem exceção. "
+        "Não dê a resposta enquanto ele não responder todas as perguntas. Após ele responder as 10 perguntas, "
+        "você pode dar o diagnóstico. Coloque todas as doenças relacionadas possíveis. "
+        "Peça apenas informações relevantes, não faça perguntas muito específicas. "
+        "Faça sempre 10 perguntas muito úteis (ao nao ser que ele dê todos os sintomas detalhadamente, "
+        "aí não precisa fazer perguntas), nem menos nem mais que isso. Faça 1 pergunta de cada vez."
     )
 
     # Inicializar memória de conversa
-    conversational_memory_length = 50000
     if 'memory' not in st.session_state:
         st.session_state.memory = ConversationBufferWindowMemory(
-            k=conversational_memory_length, memory_key="chat_history", return_messages=True
+            k=50000, memory_key="chat_history", return_messages=True
         )
 
     if 'history' not in st.session_state:
@@ -59,7 +62,7 @@ def main():
     col1, col2 = st.columns([1, 2])
 
     with col1:
-        # Área de entrada do us
+        # Área de entrada do usuário
         st.subheader("Digite seus sintomas")
         user_input = st.text_area(
             "Se possível, apresente TODOS seus sintomas DETALHADAMENTE, a intensidade e quando iniciaram, para um diagnóstico mais preciso e rápido.",
@@ -67,70 +70,47 @@ def main():
             key='user_input'
         )
 
-        # Botão de enviar para simular a tecla Enter
+        # Botão de enviar
         submit_button = st.button("Enviar", key='submit_button')
 
-        if submit_button or st.session_state.get('submit_on_enter', False):
-            if user_input:
-                # Adicionar entrada do usuário ao histórico
-                st.session_state.history.append(f"<strong>Você:</strong> {user_input}")
+        if submit_button and user_input:
+            # Adicionar entrada do usuário ao histórico
+            st.session_state.history.append(f"<strong>Você:</strong> {user_input}")
 
-                # Criar modelo de prompt
-                prompt = ChatPromptTemplate.from_messages(
-                    [
-                        SystemMessage(content=system_prompt),
-                        MessagesPlaceholder(variable_name="chat_history"),
-                        HumanMessagePromptTemplate.from_template("{human_input}"),
-                    ]
-                )
+            # Criar modelo de prompt
+            prompt = ChatPromptTemplate.from_messages(
+                [
+                    SystemMessage(content=system_prompt),
+                    MessagesPlaceholder(variable_name="chat_history"),
+                    HumanMessagePromptTemplate.from_template("{human_input}"),
+                ]
+            )
 
-                # Criar cadeia de conversa
-                conversation = LLMChain(
-                    llm=groq_chat,
-                    prompt=prompt,
-                    verbose=False,
-                    memory=st.session_state.memory,
-                )
+            # Criar cadeia de conversa
+            conversation = LLMChain(
+                llm=groq_chat,
+                prompt=prompt,
+                verbose=False,
+                memory=st.session_state.memory,
+            )
 
-                # Obter resposta do modelo
-                response = conversation.predict(human_input=user_input)
+            # Obter resposta do modelo
+            response = conversation.predict(human_input=user_input)
 
-                # Adicionar resposta ao histórico
-                st.session_state.history.append(f"<strong>MedIA:</strong> {response}")
+            # Adicionar resposta ao histórico
+            st.session_state.history.append(f"<strong>MedIA:</strong> {response}")
 
-                # Limpar entrada do usuário após o envio
-                st.session_state['submit_on_enter'] = False
-                st.experimental_rerun()
-            else:
-                st.warning("Por favor, insira seus sintomas antes de enviar.")
+            # Limpar entrada do usuário após o envio
+            st.experimental_rerun()
 
     with col2:
-        # Exibir histórico de chat com rolagem e separadores
+        # Exibir histórico de chat
         st.subheader("Respostas do MedIA")
         if st.session_state.history:
             st.markdown(
-                f"""
-                <div style="height: 400px; overflow-y: scroll;">
-                    {"<hr>".join(st.session_state.history)}
-                </div>
-                """, 
+                "<hr>".join(st.session_state.history),
                 unsafe_allow_html=True
             )
-
-        # Trecho de JavaScript para simular o pressionamento do botão 'enviar' quando Enter é pressionado
-        st.markdown("""
-            <script>
-            document.addEventListener('DOMContentLoaded', function() {
-                const textarea = document.querySelector('textarea');
-                textarea.addEventListener('keydown', function(event) {
-                    if (event.key === 'Enter' && !event.shiftKey) {
-                        event.preventDefault();
-                        document.querySelector('button').click();
-                    }
-                });
-            });
-            </script>
-            """, unsafe_allow_html=True)
 
 if __name__ == "__main__":
     main()

@@ -64,13 +64,14 @@ def main():
         user_input = st.text_area(
             "Se possível, apresente TODOS seus sintomas DETALHADAMENTE, a intensidade e quando iniciaram, para um diagnóstico mais preciso e rápido.",
             height=200,
-            key='user_input'
+            key='user_input',
+            value=st.session_state.get('user_input', '')
         )
 
         # Botão de enviar para simular a tecla Enter
         submit_button = st.button("Enviar", key='submit_button')
 
-        if submit_button or st.session_state.get('submit_on_enter', False):
+        if submit_button:
             if user_input:
                 # Adicionar entrada do usuário ao histórico
                 st.session_state.history.append(f"<div class='message user-message'><strong>Você:</strong> {user_input}</div>")
@@ -98,9 +99,10 @@ def main():
                 # Adicionar resposta ao histórico
                 st.session_state.history.append(f"<div class='message ai-message'><strong>MedIA:</strong> {response}</div>")
 
-                # Limpar entrada do usuário após o envio
-                st.session_state['submit_on_enter'] = False
-                st.experimental_rerun()
+                # Limpar a entrada do usuário após o envio
+               
+                st.rerun()
+
             else:
                 st.warning("Por favor, insira seus sintomas antes de enviar.")
 

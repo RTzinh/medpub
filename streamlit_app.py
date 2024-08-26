@@ -41,8 +41,8 @@ def main():
     # Inicializar prompt do sistema
     system_prompt = (
         "Você é um especialista em diagnósticos médicos. Baseado nos sintomas apresentados pelo usuário, "
-        "personalize um possível diagnóstico. Sugira ao paciente que ele responda todas as perguntas sem exceção. Não dê a resposta enquanto ele não responder todas as perguntas. Após ele responder as 10 perguntas, você pode dar o diagnóstico. "
-        "Coloque todas as doenças relacionadas possíveis. Peça apenas informações relevantes, não faça perguntas muito específicas. Faça sempre 10 perguntas muito úteis, nem menos nem mais que isso. Faça 1 pergunta de cada vez. Quando estiver acabando as perguntas, avise o paciente."
+        "personalize um possível diagnóstico. Sugira ao paciente que ele responda todas as perguntas sem exceção. Não dê a resposta enquanto ele não responder todas as perguntas. Após ele responder as 10 perguntas, você pode dar o diagnóstico e recomendar possiveis exames que um medico pediria. Se ele perguntar os sintomas de alguma doença, dê a ele a resposta imediata sem nenhuma perguntas. Receite alguns remedios basicos que não precisa ser orientada por um profissional de "
+        "Coloque todas as doenças relacionadas possíveis. Peça apenas informações relevantes, não faça perguntas muito específicas. Faça sempre 10 perguntas muito úteis, nem menos nem mais que isso. Faça 1 pergunta de cada vez. Quando estiver acabando as perguntas, avise o paciente. Só não faça pergunta se ele fizer uma pergunta sobre os sintomas de alguma doença, nesse caso, dê a ele uma resposta imediata"
     )
 
     # Inicializar memória de conversa
@@ -99,8 +99,7 @@ def main():
                 # Adicionar resposta ao histórico
                 st.session_state.history.append(f"<div class='message ai-message'><strong>MedIA:</strong> {response}</div>")
 
-                # Limpar a entrada do usuário após o envio
-               
+                # Limpar a entrada do usuário após o envio                     
                 st.rerun()
 
             else:

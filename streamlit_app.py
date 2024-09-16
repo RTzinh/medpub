@@ -38,7 +38,7 @@ def main():
         """
     )
 
-    # Inicializar prompt do sistema
+    # Inicializar prompt 
     system_prompt = (
         "Você é um especialista em diagnósticos médicos. Baseado nos sintomas apresentados pelo usuário, "
         "personalize um possível diagnóstico. Sugira ao paciente que ele responda todas as perguntas sem exceção. Não dê a resposta enquanto ele não responder todas as perguntas. Após ele responder as 10 perguntas, você pode dar o diagnóstico e recomendar possiveis exames que um medico pediria. Se ele perguntar os sintomas de alguma doença, dê a ele a resposta imediata sem nenhuma perguntas. Receite alguns remedios basicos que não precisa ser orientada por um profissional de "
@@ -106,7 +106,7 @@ def main():
                 st.warning("Por favor, insira seus sintomas antes de enviar.")
 
     with col2:
-        # Exibir histórico de chat com rolagem e separadores
+        # Mostra histórico de chat com rolagem e separadores
         st.subheader("Respostas do MedIA")
         if st.session_state.history:
             st.markdown(
@@ -118,7 +118,7 @@ def main():
                 unsafe_allow_html=True
             )
 
-        # Trecho de JavaScript para simular o pressionamento do botão 'enviar' quando Enter é pressionado
+        # Trecho de JavaScript para simular o pressionamento do botão 'enviar'
         st.markdown("""
             <script>
             document.addEventListener('DOMContentLoaded', function() {

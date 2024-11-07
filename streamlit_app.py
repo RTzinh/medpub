@@ -20,15 +20,13 @@ def main():
     """
 
     # Inicializar chave da API e modelo
-    groq_api_key = os.environ.get('GROQ_API_KEY')
+    groq_api_key = st.secrets["GROQ_API_KEY"]
     model = 'llama3-8b-8192'
 
     # Inicializar cliente Groq
     groq_chat = ChatGroq(groq_api_key=groq_api_key, model_name=model)
 
     # Configurar interface do Streamlit
-    st.set_page_config(page_title="MedIA", layout="wide")
-    
     st.title("MedIA")
     st.write(
         """
@@ -41,10 +39,14 @@ def main():
     # Inicializar prompt 
     system_prompt = (
         "Você é um especialista em diagnósticos médicos. Baseado nos sintomas apresentados pelo usuário, "
-        "personalize um possível diagnóstico. Sugira ao paciente que ele responda todas as perguntas sem exceção. Não dê a resposta enquanto ele não responder todas as perguntas. Após ele responder as 10 perguntas, você pode dar o diagnóstico e recomendar possiveis exames que um medico pediria. Se ele perguntar os sintomas de alguma doença, dê a ele a resposta imediata neste caso, não faça perguntas. Receite alguns remedios basicos que não precisa ser orientada por um profissional e também recomende alguns exames. "
-        "Coloque todas as doenças relacionadas possíveis. Peça apenas informações relevantes, não faça perguntas muito específicas. Faça sempre 10 perguntas muito úteis, nem menos nem mais que isso. Faça 1 pergunta de cada vez. Quando estiver acabando as perguntas, avise o paciente. Só não faça pergunta se ele fizer uma pergunta sobre os sintomas de alguma doença, nesse caso, dê a ele uma resposta imediata"
-        "Se ele perguntar os sintomas de alguma doença, dê a ele a resposta apenas, sem perguntas sobre o que ele está sentindo"
-        "Se as perguntas forem em portugues, fale em portugues, mas comunique-se em outras linguas."
+        "personalize um possível diagnóstico. Sugira ao paciente que ele responda todas as perguntas sem exceção. "
+        "Não dê a resposta enquanto ele não responder todas as perguntas. Após ele responder as 10 perguntas, "
+        "você pode dar o diagnóstico e recomendar possíveis exames que um médico pediria. "
+        "Se ele perguntar os sintomas de alguma doença, dê a ele a resposta imediata nesse caso, não faça perguntas. "
+        "Receite alguns remédios básicos que não precisam ser orientados por um profissional e também recomende alguns exames. "
+        "Coloque todas as doenças relacionadas possíveis. Faça sempre 10 perguntas muito úteis, nem menos nem mais que isso. "
+        "Faça 1 pergunta de cada vez. Quando estiver acabando as perguntas, avise o paciente. Só não faça pergunta se ele fizer uma pergunta sobre os sintomas de alguma doença, nesse caso, dê a ele uma resposta imediata."
+        "Se o usuario dizer que levou tiro ou golpe de faca oriente-o a ligar ao 190 e pedir ajuda imediata"
     )
 
     # Inicializar memória de conversa
@@ -57,83 +59,103 @@ def main():
     if 'history' not in st.session_state:
         st.session_state.history = []
 
-    # Criar layout para histórico e entrada do usuário
-    col1, col2 = st.columns([1, 2])
+    # CSS para centralizar a entrada de chat na parte inferior da tela
+    st.markdown(
+        """
+        <style>
+            .chat-input-container {
+                position: fixed;
+                bottom: 0;
+                left: 50%;
+                transform: translateX(-50%);
+                width: 60%;
+                z-index: 1000;
+                background-color: #f0f2f6;
+                padding: 10px;
+                border-top: 1px solid #ddd;
+            }
+            #chat-history {
+                height: calc(100vh - 150px);
+                overflow-y: auto;
+                padding-bottom: 60px;
+            }
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
 
-    with col1:
-        # Área de entrada do usuário
-        st.subheader("Digite seus sintomas")
-        user_input = st.text_area(
-            "Se possível, apresente TODOS seus sintomas DETALHADAMENTE, a intensidade e quando iniciaram, para um diagnóstico mais preciso e rápido.",
-            height=200,
-            key='user_input',
-            value=st.session_state.get('user_input', '')
+    # Criar layout para histórico e entrada do usuário
+    st.subheader("Respostas do MedIA")
+    if st.session_state.history:
+        st.markdown(
+            f"""
+            <div id="chat-history" style="display: flex; flex-direction: column;">
+                {"<hr>".join(st.session_state.history)}
+            </div>
+            """, 
+            unsafe_allow_html=True
         )
 
-        # Botão de enviar para simular a tecla Enter
-        submit_button = st.button("Enviar", key='submit_button')
+    # Caixa de entrada de chat fixada na parte inferior
+    user_input = st.chat_input(
+        "Digite seus sintomas",
+        key='user_input'
+    )
 
-        if submit_button:
-            if user_input:
-                # Adicionar entrada do usuário ao histórico
-                st.session_state.history.append(f"<div class='message user-message'><strong>Você:</strong> {user_input}</div>")
+    if user_input:
+        # Adicionar entrada do usuário ao histórico
+        st.session_state.history.append(f"<div class='message user-message'><strong>Você:</strong> {user_input}</div>")
 
-                # Criar modelo de prompt
-                prompt = ChatPromptTemplate.from_messages(
-                    [
-                        SystemMessage(content=system_prompt),
-                        MessagesPlaceholder(variable_name="chat_history"),
-                        HumanMessagePromptTemplate.from_template("{human_input}"),
-                    ]
-                )
+        # Criar modelo de prompt
+        prompt = ChatPromptTemplate.from_messages(
+            [
+                SystemMessage(content=system_prompt),
+                MessagesPlaceholder(variable_name="chat_history"),
+                HumanMessagePromptTemplate.from_template("{human_input}"),
+            ]
+        )
 
-                # Criar cadeia de conversa
-                conversation = LLMChain(
-                    llm=groq_chat,
-                    prompt=prompt,
-                    verbose=False,
-                    memory=st.session_state.memory,
-                )
+        # Criar cadeia de conversa
+        conversation = LLMChain(
+            llm=groq_chat,
+            prompt=prompt,
+            verbose=False,
+            memory=st.session_state.memory,
+        )
 
-                # Obter resposta do modelo
-                response = conversation.predict(human_input=user_input)
+        # Obter resposta do modelo
+        response = conversation.predict(human_input=user_input)
 
-                # Adicionar resposta ao histórico
-                st.session_state.history.append(f"<div class='message ai-message'><strong>MedIA:</strong> {response}</div>")
+        # Adicionar resposta ao histórico
+        st.session_state.history.append(f"<div class='message ai-message'><strong>MedIA:</strong> {response}</div>")
+        
+        # Atualizar a tela para mostrar a última mensagem
+        st.rerun()
 
-                # Limpar a entrada do usuário após o envio                     
-                st.rerun()
-
-            else:
-                st.warning("Por favor, insira seus sintomas antes de enviar.")
-
-    with col2:
-        # Mostra histórico de chat com rolagem e separadores
-        st.subheader("Respostas do MedIA")
-        if st.session_state.history:
-            st.markdown(
-                f"""
-                <div id="chat-history" style="height: 400px; overflow-y: auto; display: flex; flex-direction: column;">
-                    {"<hr>".join(st.session_state.history)}
-                </div>
-                """, 
-                unsafe_allow_html=True
-            )
-
-        # Trecho de JavaScript para simular o pressionamento do botão 'enviar'
-        st.markdown("""
-            <script>
+    # JavaScript para rolar automaticamente para a última mensagem após atualização
+    st.markdown(
+        """
+        <script>
             document.addEventListener('DOMContentLoaded', function() {
-                const textarea = document.querySelector('textarea');
-                textarea.addEventListener('keydown', function(event) {
-                    if (event.key === 'Enter' && !event.shiftKey) {
-                        event.preventDefault();
-                        document.querySelector('button').click();
-                    }
+                // Seleciona o contêiner do histórico de chat
+                const chatHistory = document.getElementById('chat-history');
+
+                // Configura o observador de mudanças no histórico
+                const observer = new MutationObserver(() => {
+                    chatHistory.scrollTop = chatHistory.scrollHeight;
                 });
+
+                // Ativa o observador
+                if (chatHistory) {
+                    observer.observe(chatHistory, { childList: true });
+                    // Força a rolagem para o final quando a página é carregada
+                    chatHistory.scrollTop = chatHistory.scrollHeight;
+                }
             });
-            </script>
-            """, unsafe_allow_html=True)
+        </script>
+        """,
+        unsafe_allow_html=True
+    )
 
 if __name__ == "__main__":
     main()
